@@ -1,0 +1,35 @@
+name: Fetch Airtable Data
+
+on:
+  schedule:
+    - cron: '30 13 * * *' # runs every day at 13:30 UTC = 15:30 Copenhagen summer / 14:30 Copenhagen winter
+  workflow_dispatch:       # adds a manual "Run workflow" button in GitHub so you can trigger it any time
+
+jobs:
+  fetch-data:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write      # needed so the action can save sia-data.json back to the repository
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch data from Airtable
+        env:
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
+          AIRTABLE_BASE:  ${{ secrets.AIRTABLE_BASE }}
+        run: node fetch-data.js
+
+      - name: Save updated data file to repository
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add sia-data.json
+          git diff --staged --quiet || git commit -m "Update investor data $(date -u +'%Y-%m-%d')"
+          git push
